@@ -7,7 +7,7 @@ Instagram Backend API clone, in Golang
 ```http
   POST /users
   
-  headers = {
+  payload = {
     id
     name
     email
@@ -25,7 +25,7 @@ Instagram Backend API clone, in Golang
 ```http
   POST /posts
   
-  headers = {
+  payload = {
     id
     caption
     imgurl
