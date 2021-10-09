@@ -1,5 +1,20 @@
 # instago
 Instagram Backend API clone, in Golang
+(Appointy Tech Task)
+
+## Completion
+- [x] User Creation
+- [x] Get user by User ID
+- [x] Post Creation
+- [x] Get a Post by Post ID
+- [ ] Get all posts by a User
+
+
+## Run the App:
+1. Install Golang
+2. Open folder containing main.go
+3. Run `go run main.go`
+4. The app will be hosted at localhost:8080 by default
 
 ## API Reference
 
