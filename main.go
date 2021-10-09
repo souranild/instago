@@ -8,14 +8,14 @@ import (
 )
 
 var (
-	listUserRe   = regexp.MustCompile(`^\/users[\/]*$`)
-	getUserRe    = regexp.MustCompile(`^\/users\/(\d+)$`)
-	createUserRe = regexp.MustCompile(`^\/users[\/]*$`)
-	listPostRe   = regexp.MustCompile(`^\/posts[\/]*$`)
-	getPostRe    = regexp.MustCompile(`^\/posts\/(\d+)$`)
-	createPostRe = regexp.MustCompile(`^\/posts[\/]*$`)
+	getuserREGEX     = regexp.MustCompile(`^\/users\/(\d+)$`)
+	createuserREGEX  = regexp.MustCompile(`^\/users[\/]*$`)
+	getpostREGEX     = regexp.MustCompile(`^\/posts\/(\d+)$`)
+	createpostREGEX  = regexp.MustCompile(`^\/posts[\/]*$`)
+	getuserpostREGEX = regexp.MustCompile(`^\/posts\/\/users\/(\d+)$`)
 )
 
+// User struct
 type user struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -23,44 +23,46 @@ type user struct {
 	Password string `json:"password"`
 }
 
+//Post struct
 type post struct {
-	ID              string `json:"id"`
-	Caption         string `json:"caption"`
-	ImageURL        string `json:"image"`
-	PostedTimestamp string `json:"timestamp"`
+	ID        string `json:"id"`
+	Caption   string `json:"caption"`
+	Imgurl    string `json:"imgurl"`
+	Timestamp string `json:"timestamp"`
 }
 
-//Storing User data
-type datastore struct {
+//user datastore
+type userdatastore struct {
 	m map[string]user
 	*sync.RWMutex
 }
 
-//Storing Post data
-type datastore1 struct {
-	m1 map[string]post
+//posts datastore
+type postdatastore struct {
+	m map[string]post
 	*sync.RWMutex
 }
 
+//user data storage handler
 type userHandler struct {
-	store *datastore
+	store *userdatastore
 }
 
+//post data storage handler
 type postHandler struct {
-	store *datastore1
+	store *postdatastore
 }
 
+//User endpoints
 func (h *userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	switch {
-	case r.Method == http.MethodGet && listUserRe.MatchString(r.URL.Path):
-		h.List(w, r)
+
+	case r.Method == http.MethodGet && getuserREGEX.MatchString(r.URL.Path):
+		h.GetUser(w, r)
 		return
-	case r.Method == http.MethodGet && getUserRe.MatchString(r.URL.Path):
-		h.Get(w, r)
-		return
-	case r.Method == http.MethodPost && createUserRe.MatchString(r.URL.Path):
-		h.Create(w, r)
+	case r.Method == http.MethodPost && createuserREGEX.MatchString(r.URL.Path):
+		h.CreateUser(w, r)
 		return
 	default:
 		notFound(w, r)
@@ -68,17 +70,16 @@ func (h *userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//post endpoints
 func (h *postHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	switch {
-	case r.Method == http.MethodGet && listPostRe.MatchString(r.URL.Path):
-		h.List(w, r)
+
+	case r.Method == http.MethodGet && getpostREGEX.MatchString(r.URL.Path):
+		h.GetPost(w, r)
 		return
-	case r.Method == http.MethodGet && getPostRe.MatchString(r.URL.Path):
-		h.Get(w, r)
-		return
-	case r.Method == http.MethodPost && createPostRe.MatchString(r.URL.Path):
-		h.Create(w, r)
+	case r.Method == http.MethodPost && createpostREGEX.MatchString(r.URL.Path):
+		h.CreatePost(w, r)
 		return
 	default:
 		notFound(w, r)
@@ -86,40 +87,9 @@ func (h *postHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *userHandler) List(w http.ResponseWriter, r *http.Request) {
-	h.store.RLock()
-	users := make([]user, 0, len(h.store.m))
-	for _, v := range h.store.m {
-		users = append(users, v)
-	}
-	h.store.RUnlock()
-	jsonBytes, err := json.Marshal(users)
-	if err != nil {
-		internalServerError(w, r)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-func (h *postHandler) List(w http.ResponseWriter, r *http.Request) {
-	h.store.RLock()
-	posts := make([]post, 0, len(h.store.m1))
-	for _, k := range h.store.m1 {
-		posts = append(posts, k)
-	}
-	h.store.RUnlock()
-	jsonBytes, err := json.Marshal(posts)
-	if err != nil {
-		internalServerError(w, r)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-func (h *userHandler) Get(w http.ResponseWriter, r *http.Request) {
-	matches := getUserRe.FindStringSubmatch(r.URL.Path)
+//Get users By ID
+func (h *userHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	matches := getuserREGEX.FindStringSubmatch(r.URL.Path)
 	if len(matches) < 2 {
 		notFound(w, r)
 		return
@@ -141,30 +111,8 @@ func (h *userHandler) Get(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
-func (h *postHandler) Get(w http.ResponseWriter, r *http.Request) {
-	matches := getPostRe.FindStringSubmatch(r.URL.Path)
-	if len(matches) < 2 {
-		notFound(w, r)
-		return
-	}
-	h.store.RLock()
-	u, ok := h.store.m1[matches[1]]
-	h.store.RUnlock()
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("post not found"))
-		return
-	}
-	jsonBytes, err := json.Marshal(u)
-	if err != nil {
-		internalServerError(w, r)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
+//Create a user
+func (h *userHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var u user
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		internalServerError(w, r)
@@ -182,14 +130,39 @@ func (h *userHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
-func (h *postHandler) Create(w http.ResponseWriter, r *http.Request) {
+//Get post By ID
+func (h *postHandler) GetPost(w http.ResponseWriter, r *http.Request) {
+	matches := getpostREGEX.FindStringSubmatch(r.URL.Path)
+	if len(matches) < 2 {
+		notFound(w, r)
+		return
+	}
+	h.store.RLock()
+	p, ok := h.store.m[matches[1]]
+	h.store.RUnlock()
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("post not found"))
+		return
+	}
+	jsonBytes, err := json.Marshal(p)
+	if err != nil {
+		internalServerError(w, r)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonBytes)
+}
+
+//Create a post
+func (h *postHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	var p post
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		internalServerError(w, r)
 		return
 	}
 	h.store.Lock()
-	h.store.m1[p.ID] = p
+	h.store.m[p.ID] = p
 	h.store.Unlock()
 	jsonBytes, err := json.Marshal(p)
 	if err != nil {
@@ -200,6 +173,7 @@ func (h *postHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+//Errors
 func internalServerError(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("internal server error"))
@@ -210,24 +184,29 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("not found"))
 }
 
+//Main function
 func main() {
 	mux := http.NewServeMux()
+
+	//Unit tests
 	userH := &userHandler{
-		store: &datastore{
+		store: &userdatastore{
 			m: map[string]user{
-				"1": user{ID: "1", Name: "Sour", Email: "s@gmail.com", Password: "helloworld"},
+				"1": user{ID: "1", Name: "bob", Email: "bob@bob.bob", Password: "pass"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
 	}
+
 	postH := &postHandler{
-		store: &datastore1{
-			m1: map[string]post{
-				"1": post{ID: "1", Caption: "Sdas", ImageURL: "hello.png", PostedTimestamp: "09/10/21"},
+		store: &postdatastore{
+			m: map[string]post{
+				"1": post{ID: "1", Caption: "Some Image", Imgurl: "https://image.jpeg", Timestamp: "2019-11-10 02:00:00"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
 	}
+
 	mux.Handle("/users", userH)
 	mux.Handle("/users/", userH)
 	mux.Handle("/posts", postH)
