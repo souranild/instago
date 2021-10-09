@@ -215,7 +215,7 @@ func main() {
 	userH := &userHandler{
 		store: &datastore{
 			m: map[string]user{
-				"1": user{ID: "1", Name: "Susruta", Email: "susrutadas@gmail.com", Password: "helloworld"},
+				"1": user{ID: "1", Name: "Sour", Email: "s@gmail.com", Password: "helloworld"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
@@ -223,7 +223,7 @@ func main() {
 	postH := &postHandler{
 		store: &datastore1{
 			m1: map[string]post{
-				"1": post{ID: "1", Caption: "Susrutadas", ImageURL: "hello.png", PostedTimestamp: "09/10/21"},
+				"1": post{ID: "1", Caption: "Sdas", ImageURL: "hello.png", PostedTimestamp: "09/10/21"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
