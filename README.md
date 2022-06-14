@@ -1,6 +1,5 @@
 # instago
 Instagram Backend API clone, in Golang
-(Appointy Tech Task)
 
 ## Completion
 - [x] User Creation
